@@ -1,6 +1,5 @@
 export default {
   async fetch(request, env) {
-    // CORS per far funzionare dal tuo sito
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
@@ -10,24 +9,17 @@ export default {
         }
       });
     }
-
-    if (request.method !== "POST") {
-      return new Response("Usa POST", { status: 405 });
-    }
+    if (request.method !== "POST") return new Response("Usa POST", { status: 405 });
 
     try {
       const formData = await request.formData();
-      const nome = formData.get('nome'); // es. ZetaYT
+      const nome = formData.get('nome');
       let fileBuffer;
-      let fileName = "logo.webp";
 
-      // CASO 1: file dal dispositivo
       const file = formData.get('file');
       if (file && file.size > 0) {
         fileBuffer = await file.arrayBuffer();
-      } 
-      // CASO 2: da URL
-      else {
+      } else {
         const imageUrl = formData.get('url');
         if (!imageUrl) return new Response("Manca file o url", { status: 400 });
         const res = await fetch(imageUrl);
@@ -36,8 +28,8 @@ export default {
 
       const base64 = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
 
-      // Carica su zetacraft-hub-upload
-      const githubRes = await fetch(`https://api.github.com/repos/TUO_GITHUB_USERNAME/zetacraft-hub-upload/contents/${nome}/${fileName}`, {
+      // USA LE VARIABILI
+      await fetch(`https://api.github.com/repos/${env.GITHUB_USERNAME}/zetacraft-hub-upload/contents/${nome}/logo.webp`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${env.GITHUB_TOKEN}`,
@@ -50,18 +42,9 @@ export default {
         })
       });
 
-      if (!githubRes.ok) {
-        const err = await githubRes.text();
-        return new Response(`Errore GitHub: ${err}`, { status: 500 });
-      }
-
-      return new Response(JSON.stringify({ ok: true, path: `${nome}/${fileName}` }), {
-        headers: { 
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
       });
-
     } catch (e) {
       return new Response(`Errore: ${e.message}`, { status: 500 });
     }
